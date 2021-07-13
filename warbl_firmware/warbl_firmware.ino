@@ -35,7 +35,8 @@
 
 #define MAXIMUM  (DEBOUNCE_TIME * SAMPLE_FREQUENCY) //the integrator value required to register a button press
 
-#define VERSION 20 //software version number (without decimal point)
+// LB there is no way to mark a snapshot version so change to 9x for now
+#define VERSION 91 //software version number (without decimal point)
 
 //MIDI commands
 #define NOTE_OFF 0x80 //127

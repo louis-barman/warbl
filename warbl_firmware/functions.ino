@@ -471,7 +471,9 @@ void get_shift()
     shift = ((octaveShift * 12) + noteShift); //adjust for key and octave shift.
 
     if (newState == 3 && !(modeSelector[mode] == kModeEVI || (modeSelector[mode] == kModeSax  && newNote < 62) || (modeSelector[mode] == kModeSaxBasic && newNote < 74) || (modeSelector[mode] == kModeRecorder && newNote < 76)) && !(newNote == 62 && (modeSelector[mode] == kModeUilleann || modeSelector[mode] == kModeUilleannStandard))) {  //if overblowing (except EVI, sax in the lower register, and low D with uilleann fingering, which can't overblow)
+        if (newNote < 74) { // ZZ Temp hack -- Don't accidently play the top very top D (LJB)
         shift = shift + 12; //add a register jump to the transposition if overblowing.
+        }
         if (modeSelector[mode] == kModeKaval) { //Kaval only plays a fifth higher in the second register.
             shift = shift - 5;
         }
@@ -509,6 +511,21 @@ void get_shift()
 
 
 
+int calcHysteresis(int level, bool high)
+{
+    int hysteresisPercent = buttonPrefs[mode][7][4];
+    if (hysteresisPercent == 0 ) {
+        return level;
+    }
+    int range = upperBound - sensorThreshold[0];
+    int newUpperBound;
+    if (high) {
+        newUpperBound = upperBound + (range *  hysteresisPercent )/400;
+    } else {
+        newUpperBound = upperBound - (range *  hysteresisPercent * 3 )/400;
+    }
+    return newUpperBound;
+}
 
 
 
@@ -555,6 +572,9 @@ void get_state()
 
     upperBound = (sensorThreshold[1] + ((scalePosition - 60) * multiplier)); //calculate the threshold between state 2 and state 3. This will also be used to calculate expression.
 
+    int upperBoundHigh = calcHysteresis(upperBound, 1);
+    int upperBoundLow = calcHysteresis(upperBound, 0);
+
 
     if (jump && ((millis() - jumpTimer) >= jumpTime)) {
         jump = 0; //make it okay to switch registers again if some time has past since we "jumped" or "dropped" because of rapid pressure change.
@@ -564,7 +584,7 @@ void get_state()
         drop = 0;
     }
 
-
+/*
     if (!jump && !drop) {
 
         if ((breathMode == kPressureBreath || (breathMode == kPressureThumb && modeSelector[mode] == kModeCustom && switches[mode][THUMB_AND_OVERBLOW])) && ((sensorValue2 - sensorValue) > jumpValue) && (sensorValue2 > sensorThreshold[0])) {  //if the pressure has increased rapidly (since the last reading) and there's a least enough pressure to turn a note on, jump immediately to the second register
@@ -572,6 +592,8 @@ void get_state()
             jump = 1;
             jumpTimer = millis();
             sensorValue = sensorValue2;
+            debugTrace(1, sensorValue2); //ZZ LB Debug
+
             return;
         }
 
@@ -580,20 +602,24 @@ void get_state()
             drop = 1;
             dropTimer = millis();
             sensorValue = sensorValue2;
+            debugTrace(2, sensorValue2); //ZZ LB Debug 3
             return;
         }
     }
-
+*/
     //if there haven't been rapid pressure changes and we haven't just jumped registers, choose the state based solely on current pressure.
     if (sensorValue2 <= sensorThreshold[0]) {
         newState = 1;
+        debugTrace(3, sensorValue2); //ZZ LB Debug
     }
 
     //added very small amount of hysteresis for state 2, 4/25/20
-    else if (sensorValue2 > sensorThreshold[0] + 1 && (((breathMode != kPressureBreath) && !(breathMode == kPressureThumb && modeSelector[mode] == kModeCustom && switches[mode][THUMB_AND_OVERBLOW])) || (!jump && !drop  && (breathMode > kPressureSingle) && (sensorValue2 <= upperBound)))) { //single register mode or within the bounds for state 2
+    else if (sensorValue2 > sensorThreshold[0] + 1 && (((breathMode != kPressureBreath) && !(breathMode == kPressureThumb && modeSelector[mode] == kModeCustom && switches[mode][THUMB_AND_OVERBLOW])) || (!jump && !drop  && (breathMode > kPressureSingle) && (sensorValue2 <= upperBoundLow)))) { //single register mode or within the bounds for state 2
         newState = 2;
-    } else if (!drop && (sensorValue2 > upperBound)) { //we're in two-register mode and above the upper bound for state 2
+        debugTrace(4, sensorValue2); //ZZ LB Debug
+    } else if (!drop && (sensorValue2 > upperBoundHigh)) { //we're in two-register mode and above the upper bound for state 2
         newState = 3;
+        debugTrace(5, sensorValue2); //ZZ LB Debug
     }
 
     sensorValue = sensorValue2; //we'll use the current reading as the baseline next time around, so we can monitor the rate of change.
@@ -2334,3 +2360,32 @@ void sendPressure(bool force)
         }
     }
 }
+
+
+// LB -TBD Debug trace
+void debugTrace(byte lineInfo, byte data)
+{
+    static byte previousLineInfo = -1;
+
+    if (buttonPrefs[mode][7][3] != 99) {
+        return;
+    }
+
+    if (previousLineInfo != lineInfo) {
+        //sendUSBMIDI(CC, 8, 99, lineInfo); // send using Non-Registered Parameter Number (NRPN)
+        sendUSBMIDI(KEY_PRESSURE, 8, lineInfo, data );
+        previousLineInfo = lineInfo;
+
+    }
+}
+
+// LB -TBD
+void debugInt(byte chan, int value)
+{
+    if (buttonPrefs[mode][7][3] != 99) {
+        return;
+    }
+
+    sendUSBMIDI(KEY_PRESSURE, chan, value>>7, value & 0x7F );
+}
+
