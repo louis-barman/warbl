@@ -82,6 +82,7 @@ ISR (ADC_vect)
 
         digitalWrite2f(pins[8], LOW); //turn off the previous LED
         tempToneholeRead[8] = (ADC) - tempToneholeReadA[8]; //get the previous illuminated reading and subtract the ambient light reading
+        toneholesReadyInterupt = true;
         Timer1.resume(); //start the timer to take a short break, conserving some power.
         return;
     }
@@ -471,7 +472,7 @@ void get_shift()
     shift = ((octaveShift * 12) + noteShift); //adjust for key and octave shift.
 
     if (newState == 3 && !(modeSelector[mode] == kModeEVI || (modeSelector[mode] == kModeSax  && newNote < 62) || (modeSelector[mode] == kModeSaxBasic && newNote < 74) || (modeSelector[mode] == kModeRecorder && newNote < 76)) && !(newNote == 62 && (modeSelector[mode] == kModeUilleann || modeSelector[mode] == kModeUilleannStandard))) {  //if overblowing (except EVI, sax in the lower register, and low D with uilleann fingering, which can't overblow)
-        if (newNote < 74) { // ZZ Temp hack -- Don't accidently play the top very top D (LJB)
+        if (newNote < 72) { // Issue #9 A temp fix -- Don't accidently play the top very top D (74) or C (72) TBD
         shift = shift + 12; //add a register jump to the transposition if overblowing.
         }
         if (modeSelector[mode] == kModeKaval) { //Kaval only plays a fifth higher in the second register.
@@ -527,6 +528,13 @@ int calcHysteresis(int level, bool high)
     return newUpperBound;
 }
 
+// TBD A change for discussion
+// the code would better using these #defines
+// and also doing a global rename of newState to currentState
+#define SILENCE         1
+#define BOTTOM_REGISTER 2
+#define TOP_REGISTER    3
+#define currentState newState
 
 
 //State machine that models the way that a tinwhistle etc. begins sounding and jumps octaves in response to breath pressure.
@@ -537,9 +545,13 @@ void get_state()
     sensorValue2 = tempSensorValue; //transfer last reading to a non-volatile variable
     interrupts();
 
+
+/*
+Commenting out these three lines fixes issue #7 TBD
     if (sensorValue == sensorValue2) {
         return; //don't bother going further if the pressure hasn't changed.
     }
+*/
 
     byte scalePosition;
 
@@ -584,7 +596,7 @@ void get_state()
         drop = 0;
     }
 
-/*
+/* See Issue #8 TBD
     if (!jump && !drop) {
 
         if ((breathMode == kPressureBreath || (breathMode == kPressureThumb && modeSelector[mode] == kModeCustom && switches[mode][THUMB_AND_OVERBLOW])) && ((sensorValue2 - sensorValue) > jumpValue) && (sensorValue2 > sensorThreshold[0])) {  //if the pressure has increased rapidly (since the last reading) and there's a least enough pressure to turn a note on, jump immediately to the second register
@@ -609,16 +621,16 @@ void get_state()
 */
     //if there haven't been rapid pressure changes and we haven't just jumped registers, choose the state based solely on current pressure.
     if (sensorValue2 <= sensorThreshold[0]) {
-        newState = 1;
+        currentState = SILENCE;
         debugTrace(3, sensorValue2); //ZZ LB Debug
     }
 
     //added very small amount of hysteresis for state 2, 4/25/20
     else if (sensorValue2 > sensorThreshold[0] + 1 && (((breathMode != kPressureBreath) && !(breathMode == kPressureThumb && modeSelector[mode] == kModeCustom && switches[mode][THUMB_AND_OVERBLOW])) || (!jump && !drop  && (breathMode > kPressureSingle) && (sensorValue2 <= upperBoundLow)))) { //single register mode or within the bounds for state 2
-        newState = 2;
+        currentState = BOTTOM_REGISTER;
         debugTrace(4, sensorValue2); //ZZ LB Debug
     } else if (!drop && (sensorValue2 > upperBoundHigh)) { //we're in two-register mode and above the upper bound for state 2
-        newState = 3;
+        currentState = TOP_REGISTER;
         debugTrace(5, sensorValue2); //ZZ LB Debug
     }
 

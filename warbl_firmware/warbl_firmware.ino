@@ -35,6 +35,9 @@
 
 #define MAXIMUM  (DEBOUNCE_TIME * SAMPLE_FREQUENCY) //the integrator value required to register a button press
 
+// Note // LB With a value of 30 it just starts getting noticeable with 5 most but not all spurious transient notes are suppressed
+#define TONEHOLE_DEBOUNCE_COUNTER 8 // Set to 1 for off
+
 // LB there is no way to mark a snapshot version so change to 9x for now
 #define VERSION 91 //software version number (without decimal point)
 
@@ -398,6 +401,8 @@ int toneholeBaseline[] = {0, 0, 0, 0, 0, 0, 0, 0, 0}; //baseline (uncovered) hol
 volatile int tempToneholeRead[] = {0, 0, 0, 0, 0, 0, 0, 0, 0}; //temporary storage for tonehole sensor readings with IR LED on, written during the timer ISR
 int toneholeRead[] = {0, 0, 0, 0, 0, 0, 0, 0, 0}; //storage for tonehole sensor readings, transferred from the above volatile variable
 volatile int tempToneholeReadA[] = {0, 0, 0, 0, 0, 0, 0, 0, 0}; //temporary storage for ambient light tonehole sensor readings, written during the timer ISR
+bool toneholesReady = false; // Indicates when a fresh reading of the tone holes is available
+bool toneholesReadyInterupt = false;
 unsigned int holeCovered = 0; //whether each hole is covered-- each bit corresponds to a tonehole.
 uint8_t tempCovered = 0; //used when masking holeCovered to ignore certain holes depending on the fingering pattern.
 bool fingersChanged = 1; //keeps track of when the fingering pattern has changed.
@@ -463,6 +468,7 @@ byte buttonReceiveMode = 100; //which row in the button configuration matrix for
 byte pressureReceiveMode = 100; //which pressure variable we're currently receiving date for. From 1-12: Closed: offset, multiplier, jump, drop, jump time, drop time, Vented: offset, multiplier, jump, drop, jump time, drop time
 byte counter = 0; // We use this to know when to send a new pressure reading to the configuration tool. We increment it every time we send a pitchBend message, to use as a simple timer wihout needing to set another actual timer.
 byte fingeringReceiveMode = 0; // indicates the mode (instrument) for which a fingering pattern is going to be sent
+byte holeDebounceCounter = 0;  // countdown of idenditical tone holes readings before they are accepted.
 
 void setup()
 {
@@ -514,7 +520,30 @@ void setup()
 }
 
 
+bool debounceFingerHoles()
+{
+    if (toneholesReady) {
+        if (prevHoleCovered != holeCovered) {
+            prevHoleCovered = holeCovered;
+            holeDebounceCounter = TONEHOLE_DEBOUNCE_COUNTER;
+        } else if (holeDebounceCounter > 0) {
+            holeDebounceCounter--;
+            if (holeDebounceCounter == 0) {
+                return true;
+            }
+        }
+    }
+    return false;
 
+/*
+    // Previous code DELETE ME
+    if (prevHoleCovered != holeCovered) {
+        prevHoleCovered = holeCovered;
+        return true;
+    }
+    return false;
+*/
+}
 
 void loop()
 {
@@ -544,6 +573,8 @@ void loop()
     for (byte i = 0; i < 9; i++) {
         toneholeRead[i] = tempToneholeRead[i]; //transfer sensor readings to a variable that won't get modified in the ISR
     }
+    toneholesReady = toneholesReadyInterupt;
+    toneholesReadyInterupt = false;
     interrupts();
 
 
@@ -558,13 +589,11 @@ void loop()
 
     get_fingers(); //find which holes are covered
 
-
-    if (prevHoleCovered != holeCovered) {
+    if (debounceFingerHoles()) {
         fingersChanged = 1;
 
         tempNewNote = get_note(holeCovered); //get the next MIDI note from the fingering pattern if it has changed
         send_fingers(); //send new fingering pattern to the Configuration Tool
-        prevHoleCovered = holeCovered;
         if (pitchBendMode == kPitchBendSlideVibrato || pitchBendMode == kPitchBendLegatoSlideVibrato) {
             findStepsDown();
         }
@@ -579,11 +608,16 @@ void loop()
                 }
             }
         }
-        newNote = tempNewNote; //update the next note if the fingering pattern is valid
+        // This changes fixes issue #7 TBD
+        //newNote = tempNewNote; //update the next note if the fingering pattern is valid
     }
 
 
     if (sensorDataReady) {
+        if (tempNewNote !=-1) {
+            newNote = tempNewNote; // This changes fixes issue #7 TBD
+            tempNewNote = -1;
+        }
         get_state();//get the breath state from the pressure sensor if there's been a reading.
     }
 
