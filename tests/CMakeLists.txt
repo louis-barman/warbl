@@ -30,7 +30,9 @@ add_executable(register_ctrl_test
     ../warbl_firmware/register_ctrl.cpp ../warbl_firmware/register_ctrl.h
     ../warbl_firmware/warbl.h
     ../warbl_firmware/debug.h
+    ../warbl_firmware/fingering.cpp ../warbl_firmware/fingering.h
     register_ctrl_test.cpp
+    fingering_test.cpp
     warbl_mock.cpp warbl_mock.h
 )
 

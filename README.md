@@ -109,7 +109,6 @@ Then you will be able to print to the serial monitor for debugging. Doing this m
 Turning on the CDC class will also make so that Windows 7 will require the drivers to be installed for normal MIDI operation to work, and may interfere with MIDI modules (I’m not sure about this).
 
 ### Running tests
-
 Please see the [tests/README.md](tests/) in the tests directory for instuctions how to run the tests.
 
 Have fun!

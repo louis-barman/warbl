@@ -28,6 +28,7 @@
 #include <EEPROM.h>
 #include <avr/pgmspace.h> // for using PROGMEM for fingering chart storage
 #include "register_ctrl.h"
+#include "fingering.h"
 
 #define  GPIO2_PREFER_SPEED  1 //digitalread speed, see: https://github.com/Locoduino/DIO2/blob/master/examples/standard_outputs/standard_outputs.ino
 

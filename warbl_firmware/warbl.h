@@ -5,6 +5,7 @@
 
 typedef unsigned char byte;
 
+#define arraySize(arr) (sizeof(arr)/sizeof(arr[0]))
 
 extern int lowerThreshold();
 extern byte hysteresisConfig();

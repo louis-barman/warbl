@@ -165,11 +165,14 @@ void send_fingers()
 }
 
 
-
+int get_note(unsigned int fingerPattern)
+{
+    return (isCustomFingeringEnabled()) ? customMidiNote(fingerPattern) : get_note_original(fingerPattern);
+}
 
 
 //Return a MIDI note number (0-127) based on the current fingering. The analog readings of the 9 hole sensors are also stored in the tempToneholeRead variable for later use.
-int get_note(unsigned int fingerPattern)
+int get_note_original(unsigned int fingerPattern)
 {
 
 
@@ -1253,6 +1256,9 @@ void receiveMIDI()
                         loadPrefs();
                     }
 
+                   else if (rx.byte2 == WARBL_CFG_FINGERING_ID) {
+                        rxFingeringConfig(rx.byte3);
+                   }
 
                     for (byte i = 0; i < 3; i++) { //update noteshift
                         if (rx.byte2 == 111 + i) {
