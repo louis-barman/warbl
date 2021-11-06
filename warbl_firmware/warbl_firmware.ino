@@ -27,6 +27,7 @@
 #include <MIDIUSB.h>
 #include <EEPROM.h>
 #include <avr/pgmspace.h> // for using PROGMEM for fingering chart storage
+#include "register_ctrl.h"
 
 #define  GPIO2_PREFER_SPEED  1 //digitalread speed, see: https://github.com/Locoduino/DIO2/blob/master/examples/standard_outputs/standard_outputs.ino
 
@@ -36,10 +37,10 @@
 #define MAXIMUM  (DEBOUNCE_TIME * SAMPLE_FREQUENCY) //the integrator value required to register a button press
 
 // Note // LB With a value of 30 it just starts getting noticeable with 5 most but not all spurious transient notes are suppressed
-#define TONEHOLE_DEBOUNCE_COUNTER 8 // Set to 1 for off
+#define TONEHOLE_DEBOUNCE_COUNTER dropValue // Set to 1 for off (8 is a good value to use)
 
 // LB there is no way to mark a snapshot version so change to 9x for now
-#define VERSION 91 //software version number (without decimal point)
+#define VERSION 92 //software version number (without decimal point)
 
 //MIDI commands
 #define NOTE_OFF 0x80 //127
@@ -525,7 +526,7 @@ bool debounceFingerHoles()
     if (toneholesReady) {
         if (prevHoleCovered != holeCovered) {
             prevHoleCovered = holeCovered;
-            holeDebounceCounter = TONEHOLE_DEBOUNCE_COUNTER;
+            holeDebounceCounter = TONEHOLE_DEBOUNCE_COUNTER + 1;
         } else if (holeDebounceCounter > 0) {
             holeDebounceCounter--;
             if (holeDebounceCounter == 0) {
@@ -535,14 +536,6 @@ bool debounceFingerHoles()
     }
     return false;
 
-/*
-    // Previous code DELETE ME
-    if (prevHoleCovered != holeCovered) {
-        prevHoleCovered = holeCovered;
-        return true;
-    }
-    return false;
-*/
 }
 
 void loop()

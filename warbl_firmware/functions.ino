@@ -511,32 +511,6 @@ void get_shift()
 }
 
 
-
-int calcHysteresis(int level, bool high)
-{
-    int hysteresisPercent = buttonPrefs[mode][7][4];
-    if (hysteresisPercent == 0 ) {
-        return level;
-    }
-    int range = upperBound - sensorThreshold[0];
-    int newUpperBound;
-    if (high) {
-        newUpperBound = upperBound + (range *  hysteresisPercent )/400;
-    } else {
-        newUpperBound = upperBound - (range *  hysteresisPercent * 3 )/400;
-    }
-    return newUpperBound;
-}
-
-// TBD A change for discussion
-// the code would better using these #defines
-// and also doing a global rename of newState to currentState
-#define SILENCE         1
-#define BOTTOM_REGISTER 2
-#define TOP_REGISTER    3
-#define currentState newState
-
-
 //State machine that models the way that a tinwhistle etc. begins sounding and jumps octaves in response to breath pressure.
 void get_state()
 {
@@ -545,13 +519,6 @@ void get_state()
     sensorValue2 = tempSensorValue; //transfer last reading to a non-volatile variable
     interrupts();
 
-
-/*
-Commenting out these three lines fixes issue #7 TBD
-    if (sensorValue == sensorValue2) {
-        return; //don't bother going further if the pressure hasn't changed.
-    }
-*/
 
     byte scalePosition;
 
@@ -581,58 +548,12 @@ Commenting out these three lines fixes issue #7 TBD
         }
     }
 
-
-    upperBound = (sensorThreshold[1] + ((scalePosition - 60) * multiplier)); //calculate the threshold between state 2 and state 3. This will also be used to calculate expression.
-
-    int upperBoundHigh = calcHysteresis(upperBound, 1);
-    int upperBoundLow = calcHysteresis(upperBound, 0);
-
-
-    if (jump && ((millis() - jumpTimer) >= jumpTime)) {
-        jump = 0; //make it okay to switch registers again if some time has past since we "jumped" or "dropped" because of rapid pressure change.
+    if (isOverblowEnabled()) {
+        upperBound = (sensorThreshold[1] + ((scalePosition - 60) * multiplier)); //calculate the threshold between state 2 and state 3. This will also be used to calculate expression.
+    } else {
+        upperBound = -1;
     }
-
-    else if (drop && ((millis() - dropTimer) >= dropTime)) {
-        drop = 0;
-    }
-
-/* See Issue #8 TBD
-    if (!jump && !drop) {
-
-        if ((breathMode == kPressureBreath || (breathMode == kPressureThumb && modeSelector[mode] == kModeCustom && switches[mode][THUMB_AND_OVERBLOW])) && ((sensorValue2 - sensorValue) > jumpValue) && (sensorValue2 > sensorThreshold[0])) {  //if the pressure has increased rapidly (since the last reading) and there's a least enough pressure to turn a note on, jump immediately to the second register
-            newState = 3;
-            jump = 1;
-            jumpTimer = millis();
-            sensorValue = sensorValue2;
-            debugTrace(1, sensorValue2); //ZZ LB Debug
-
-            return;
-        }
-
-        if (newState == 3 && breathMode > kPressureSingle && ((sensorValue - sensorValue2) > dropValue)) {  //if we're in second register and the pressure has dropped rapidly, turn the note off (this lets us drop directly from the second register to note off).
-            newState = 1;
-            drop = 1;
-            dropTimer = millis();
-            sensorValue = sensorValue2;
-            debugTrace(2, sensorValue2); //ZZ LB Debug 3
-            return;
-        }
-    }
-*/
-    //if there haven't been rapid pressure changes and we haven't just jumped registers, choose the state based solely on current pressure.
-    if (sensorValue2 <= sensorThreshold[0]) {
-        currentState = SILENCE;
-        debugTrace(3, sensorValue2); //ZZ LB Debug
-    }
-
-    //added very small amount of hysteresis for state 2, 4/25/20
-    else if (sensorValue2 > sensorThreshold[0] + 1 && (((breathMode != kPressureBreath) && !(breathMode == kPressureThumb && modeSelector[mode] == kModeCustom && switches[mode][THUMB_AND_OVERBLOW])) || (!jump && !drop  && (breathMode > kPressureSingle) && (sensorValue2 <= upperBoundLow)))) { //single register mode or within the bounds for state 2
-        currentState = BOTTOM_REGISTER;
-        debugTrace(4, sensorValue2); //ZZ LB Debug
-    } else if (!drop && (sensorValue2 > upperBoundHigh)) { //we're in two-register mode and above the upper bound for state 2
-        currentState = TOP_REGISTER;
-        debugTrace(5, sensorValue2); //ZZ LB Debug
-    }
+    newState = registerControl(sensorValue2, upperBound);
 
     sensorValue = sensorValue2; //we'll use the current reading as the baseline next time around, so we can monitor the rate of change.
     sensorDataReady = 0; //we've used the sensor reading, so don't use it again
@@ -2373,31 +2294,25 @@ void sendPressure(bool force)
     }
 }
 
+// access funtions used by register_ctrl.cpp
+int lowerThreshold() {
+    return sensorThreshold[0];
+}
 
-// LB -TBD Debug trace
-void debugTrace(byte lineInfo, byte data)
-{
-    static byte previousLineInfo = -1;
+byte hysteresisConfig() {
+    // was return buttonPrefs[mode][7][4];
+    return jumpValue;
+}
 
-    if (buttonPrefs[mode][7][3] != 99) {
-        return;
-    }
-
-    if (previousLineInfo != lineInfo) {
-        //sendUSBMIDI(CC, 8, 99, lineInfo); // send using Non-Registered Parameter Number (NRPN)
-        sendUSBMIDI(KEY_PRESSURE, 8, lineInfo, data );
-        previousLineInfo = lineInfo;
-
+int getRegisterHoldoffTime(jumpDrop_t jumpDrop) {
+    if (jumpDrop == JUMP) {
+        return jumpTime;
+    } else {
+        return dropTime;
     }
 }
 
-// LB -TBD
-void debugInt(byte chan, int value)
-{
-    if (buttonPrefs[mode][7][3] != 99) {
-        return;
-    }
-
-    sendUSBMIDI(KEY_PRESSURE, chan, value>>7, value & 0x7F );
+bool isOverblowEnabled() {
+    return (breathMode == kPressureBreath || (breathMode == kPressureThumb && modeSelector[mode] == kModeCustom && switches[mode][THUMB_AND_OVERBLOW]));
 }
 
