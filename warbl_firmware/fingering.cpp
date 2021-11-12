@@ -47,7 +47,7 @@ int customMidiNote(unsigned int fingerPattern)
             return fingering->midiNote;
         }
     }
-    return 0;
+    return -1;
 }
 
 void resetFingerings() {

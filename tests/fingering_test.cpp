@@ -90,13 +90,13 @@ void testFingering(const string fingering) {
 
         for(const char& c : fingers) {
             switch (c) {
-            case 'o':
+            case 'x':
                 rxFingeringConfig(FINGER_COVERED);
                 break;
-            case '-':
+            case 'o':
                 rxFingeringConfig(FINGER_OPEN);
                 break;
-            case 'x':
+            case '-':
                 rxFingeringConfig(FINGER_DONT_CARE);
                 break;
             case ' ':
@@ -145,56 +145,56 @@ TEST(Fingering, internalNoteNameToMidi) {
 TEST(Fingering, withNoConfig) {
     resetTests();
     EXPECT_FALSE(isCustomFingeringEnabled());
-    EXPECT_EQ(0, customMidiNote(0b011111110));
+    EXPECT_EQ(-1, customMidiNote(0b011111110));
 }
 
 
 TEST(Fingering, withLowD4) {
     resetTests();
-    testFingering("D4 : x ooo ooox x");
+    testFingering("D4 : - xxx xxx- -");
     EXPECT_TRUE(isCustomFingeringEnabled());
     EXPECT_EQ(62, customMidiNote(0b011111100));
     EXPECT_EQ(62, customMidiNote(0b111111111));
-    EXPECT_EQ(0, customMidiNote(0b011111000));
+    EXPECT_EQ(-1, customMidiNote(0b011111000));
 }
 
 
 TEST(Fingering, withLowE4) {
     resetTests();
-    testFingering("E4 : x ooo oo-x x");
+    testFingering("E4 : - xxx xxo- -");
     EXPECT_EQ(64, customMidiNote(0b011111000));
     EXPECT_EQ(64, customMidiNote(0b111111011));
-    EXPECT_EQ(0, customMidiNote(0b011110000));
-    EXPECT_EQ(0, customMidiNote(0b011111100));
+    EXPECT_EQ(-1, customMidiNote(0b011110000));
+    EXPECT_EQ(-1, customMidiNote(0b011111100));
 }
 
 
 TEST(Fingering, withDandE) {
     resetTests();
-    testFingering("E4 : x ooo oo-x x");
-    testFingering("D4 : x ooo ooox x");
+    testFingering("E4 : - xxx xxo- -");
+    testFingering("D4 : - xxx xxx- -");
     EXPECT_EQ(62, customMidiNote(0b011111100)); // D4
     EXPECT_EQ(62, customMidiNote(0b111111111));
     EXPECT_EQ(64, customMidiNote(0b011111000)); // E4
     EXPECT_EQ(64, customMidiNote(0b111111011));
-    EXPECT_EQ(0, customMidiNote(0b011110000));
+    EXPECT_EQ(-1, customMidiNote(0b011110000));
 }
 
 
 TEST(Fingering, withLowScale) {
     resetTests();
-    testFingering("D4 : x ooo ooox x");
-    testFingering("E4 : x ooo oo-x x");
-    testFingering("F4 : x ooo o-ox x");
-    testFingering("F#4: x ooo o-xx x");
-    testFingering("G4 : x ooo -xxx x");
-    testFingering("A4 : x oo- xxxx x");
-    testFingering("Bb4: x o-o xxxx x");
-    testFingering("B4 : x o-- xxxx x");
-    testFingering("C#5: x -oo -xxx x");
-    testFingering("C#5: x -o- -xxx x");
-    testFingering("C5 : x --- ---x x");
-    testFingering("D5 : x -oo ooox x");
+    testFingering("D4 : - xxx xxx- -");
+    testFingering("E4 : - xxx xxo- -");
+    testFingering("F4 : - xxx xox- -");
+    testFingering("F#4: - xxx xo-- -");
+    testFingering("G4 : - xxx o--- -");
+    testFingering("A4 : - xxo ---- -");
+    testFingering("Bb4: - xox ---- -");
+    testFingering("B4 : - xoo ---- -");
+    testFingering("C#5: - oxx o--- -");
+    testFingering("C#5: - oxo o--- -");
+    testFingering("C5 : - ooo ooo- -");
+    testFingering("D5 : - oxx xxx- -");
     EXPECT_EQ(62, customMidiNote(0b011111100)); // D4
     EXPECT_EQ(62, customMidiNote(0b111111111));
     EXPECT_EQ(64, customMidiNote(0b011111000));

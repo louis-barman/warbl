@@ -475,9 +475,9 @@ void get_shift()
     shift = ((octaveShift * 12) + noteShift); //adjust for key and octave shift.
 
     if (newState == 3 && !(modeSelector[mode] == kModeEVI || (modeSelector[mode] == kModeSax  && newNote < 62) || (modeSelector[mode] == kModeSaxBasic && newNote < 74) || (modeSelector[mode] == kModeRecorder && newNote < 76)) && !(newNote == 62 && (modeSelector[mode] == kModeUilleann || modeSelector[mode] == kModeUilleannStandard))) {  //if overblowing (except EVI, sax in the lower register, and low D with uilleann fingering, which can't overblow)
-        if (newNote < 72) { // Issue #9 A temp fix -- Don't accidently play the top very top D (74) or C (72) TBD
+        //if (newNote < 72) { // Issue #9 A temp fix -- Don't accidently play the top very top D (74) or C (72) TBD
         shift = shift + 12; //add a register jump to the transposition if overblowing.
-        }
+        //}
         if (modeSelector[mode] == kModeKaval) { //Kaval only plays a fifth higher in the second register.
             shift = shift - 5;
         }
