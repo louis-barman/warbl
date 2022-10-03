@@ -1,9 +1,8 @@
-
 #ifndef DEBUG_H_
 #define DEBUG_H_
 
 #ifndef DEBUG_ENABLED
-#define DEBUG_ENABLED   0 // Set to 1 to enable midi debuging (Normally keep as 0)
+#define DEBUG_ENABLED   1 // Set to 1 to enable midi debuging (Normally keep as 0)
 #endif
 
 #if DEBUG_ENABLED
@@ -14,12 +13,11 @@
     #define DEBUG_UPPERBOUND_LOW   24
     #define DEBUG_UPPERBOUND_HIGH  26
 
-    extern void debugTrace(byte lineInfo, byte data);
-    extern void debugValue(byte key, byte value);
-    extern void debugInt(byte key, int value);
+    extern void debugTrace(uint8_t lineInfo, uint8_t data);
+    extern void debugValue(uint8_t key, uint8_t value);
+    extern void debugInt(uint8_t key, int value);
     extern void debugSetOnce(bool enable);
-    extern void debugIntOnce(byte key, int value);
-    extern void debugPressure(int pressure);
+    extern void debugIntOnce(uint8_t key, int value);
 
 #else
 

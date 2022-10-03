@@ -9,7 +9,7 @@
 typedef enum {JUMP, DROP} jumpDrop_t;
 
 
-extern byte registerControl(int pressure, int upperBound);
+extern uint8_t registerControl(int pressure, int upperBound);
 
 extern int getRegisterHoldoffTime(jumpDrop_t jumpDrop);
 extern int calcHysteresis(int currentUpperBound, bool high);

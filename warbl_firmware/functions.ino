@@ -472,9 +472,9 @@ void get_shift()
     shift = ((octaveShift * 12) + noteShift); //adjust for key and octave shift.
 
     if (newState == 3 && !(modeSelector[mode] == kModeEVI || (modeSelector[mode] == kModeSax  && newNote < 62) || (modeSelector[mode] == kModeSaxBasic && newNote < 74) || (modeSelector[mode] == kModeRecorder && newNote < 76)) && !(newNote == 62 && (modeSelector[mode] == kModeUilleann || modeSelector[mode] == kModeUilleannStandard))) {  //if overblowing (except EVI, sax in the lower register, and low D with uilleann fingering, which can't overblow)
-        if (newNote < 72) { // Issue #9 A temp fix -- Don't accidently play the top very top D (74) or C (72) TBD
+        //if (newNote < 72) { // Issue #9 A temp fix -- Don't accidently play the top very top D (74) or C (72) TBD
         shift = shift + 12; //add a register jump to the transposition if overblowing.
-        }
+        // ZZ }
         if (modeSelector[mode] == kModeKaval) { //Kaval only plays a fifth higher in the second register.
             shift = shift - 5;
         }
@@ -519,6 +519,12 @@ void get_state()
     sensorValue2 = tempSensorValue; //transfer last reading to a non-volatile variable
     interrupts();
 
+/* ZZ was
+    if (sensorValue == sensorValue2) {
+        return; //don't bother going further if the pressure hasn't changed.
+    }
+*/
+
 
     byte scalePosition;
 
@@ -528,7 +534,7 @@ void get_state()
         scalePosition = newNote;
     }
 
-    pressureChangeRate = sensorValue2 - sensorValue; //calculate the rate of change
+    // ZZ Not needded pressureChangeRate = sensorValue2 - sensorValue; //calculate the rate of change
 
     if (ED[mode][DRONES_CONTROL_MODE] == 3) { //use pressure to control drones if that option has been selected. There's a small amount of hysteresis added.
 
@@ -2141,8 +2147,14 @@ void loadPrefs()
     //set these variables depending on whether "vented" is selected
     offset = pressureSelector[mode][(switches[mode][VENTED] * 6) + 0];
     multiplier = pressureSelector[mode][(switches[mode][VENTED] * 6) + 1];
-    jumpValue = pressureSelector[mode][(switches[mode][VENTED] * 6) + 2];
-    dropValue = pressureSelector[mode][(switches[mode][VENTED] * 6) + 3];
+
+   // amowry PLEASE CHANGE AND FIX THIS None these now should use VENTED switch
+     // WAS jumpValue = pressureSelector[mode][(switches[mode][VENTED] * 6) + 2];
+    hysteresisSetting = pressureSelector[mode][(switches[mode][VENTED] * 6) + 2];
+    // WAS dropValue = pressureSelector[mode][(switches[mode][VENTED] * 6) + 3];
+    filterTransientsTime = pressureSelector[mode][(switches[mode][VENTED] * 6) + 3];
+
+
     jumpTime = pressureSelector[mode][(switches[mode][VENTED] * 6) + 4];
     dropTime = pressureSelector[mode][(switches[mode][VENTED] * 6) + 5];
 
@@ -2301,7 +2313,7 @@ int lowerThreshold() {
 
 byte hysteresisConfig() {
     // was return buttonPrefs[mode][7][4];
-    return jumpValue;
+    return hysteresisSetting;
 }
 
 int getRegisterHoldoffTime(jumpDrop_t jumpDrop) {

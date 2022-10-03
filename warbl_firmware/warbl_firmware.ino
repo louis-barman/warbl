@@ -36,9 +36,6 @@
 
 #define MAXIMUM  (DEBOUNCE_TIME * SAMPLE_FREQUENCY) //the integrator value required to register a button press
 
-// Note // LB With a value of 30 it just starts getting noticeable with 5 most but not all spurious transient notes are suppressed
-#define TONEHOLE_DEBOUNCE_COUNTER dropValue // Set to 1 for off (8 is a good value to use)
-
 // LB there is no way to mark a snapshot version so change to 9x for now
 #define VERSION 92 //software version number (without decimal point)
 
@@ -352,7 +349,7 @@ volatile unsigned int tempSensorValue = 0; //for holding the pressure sensor val
 int sensorValue = 0;  // first value read from the pressure sensor
 int sensorValue2 = 0; // second value read from the pressure sensor, for measuring rate of change in pressure
 int prevSensorValue = 0; // previous sensor reading, used to tell if the pressure has changed and should be sent.
-int pressureChangeRate = 0; //the difference between current and previous sensor readings
+// ZZ int pressureChangeRate = 0; //the difference between current and previous sensor readings
 int sensorCalibration = 0; //the sensor reading at startup, used as a base value
 byte offset = 15;
 byte customScalePosition; //used to indicate the position of the current note on the custom chart scale (needed for state calculation)
@@ -363,14 +360,20 @@ byte prevState = 1; //the previous state, used to monitor change necessary for a
 boolean sensorDataReady = 0; //tells us that pressure data is available
 boolean velocityDelay = 0; //whether we are currently waiting for the pressure to rise after crossing the threshold from having no note playing to have a note playing. This is only used if we're sending velocity based on pressure.
 unsigned long velocityDelayTimer = 0; //a timer for the above delay.
-bool jump = 0; //whether we jumped directly to second octave from note off because of rapidly increasing pressure.
-unsigned long jumpTimer = 0; //records time when we dropped to note off.
+// ZZ bool jump = 0; //whether we jumped directly to second octave from note off because of rapidly increasing pressure.
+// ZZ unsigned long jumpTimer = 0; //records time when we dropped to note off.
 int jumpTime = 15; //the amount of time to wait before dropping back down from an octave jump to first octave because of insufficient pressure
-bool drop = 0; //whether we dropped directly from second octave to note off
-unsigned long dropTimer = 0; //time when we jumped to second octave.
+// ZZ bool drop = 0; //whether we dropped directly from second octave to note off
+// ZZ unsigned long dropTimer = 0; //time when we jumped to second octave.
+
+// amowry PLEASE CHANGE AND FIX THIS None these now should use VENTED switch
 int dropTime = 15 ; //the amount of time to wait (ms) before turning a note back on after dropping directly from second octave to note off
-byte jumpValue = 15;
-byte dropValue = 15;
+byte hysteresisSetting = 15;
+
+// amowry PLEASE CHANGE AND FIX THIS dropValue should be filterTransientsTime
+// Note // LB With a value of 30 it just starts getting noticeable with 5 most but not all spurious transient notes are suppressed
+//#define FILTER_TRANSIENT_TIME filterTransientsTime // Set to 1 for off (8 is a good value to use)
+byte filterTransientsTime = 15;
 byte multiplier = 15; //controls how much more difficult it is to jump to second octave from higher first-octave notes than from lower first-octave notes. Increasing this makes playing with a bag more forgiving but requires more force to reach highest second-octave notes. Can be set according to fingering mode and breath mode (i.e. a higher jump factor may be used for playing with a bag). Array indices 1-3 are for breath mode jump factor, indices 4-6 are for bag mode jump factor.
 byte soundTriggerOffset = 3; //the number of sensor values above the calibration setting at which a note on will be triggered (first octave)
 int learnedPressure = 0; //the learned pressure reading, used as a base value
@@ -526,7 +529,7 @@ bool debounceFingerHoles()
     if (toneholesReady) {
         if (prevHoleCovered != holeCovered) {
             prevHoleCovered = holeCovered;
-            holeDebounceCounter = TONEHOLE_DEBOUNCE_COUNTER + 1;
+            holeDebounceCounter = filterTransientsTime + 1;
         } else if (holeDebounceCounter > 0) {
             holeDebounceCounter--;
             if (holeDebounceCounter == 0) {
@@ -601,15 +604,15 @@ void loop()
                 }
             }
         }
-        // This changes fixes issue #7 TBD
+        // ZZ DELETE This changes fixes issue #7 TBD
         //newNote = tempNewNote; //update the next note if the fingering pattern is valid
     }
 
 
     if (sensorDataReady) {
-        if (tempNewNote !=-1) {
+        if (tempNewNote !=-99) {
             newNote = tempNewNote; // This changes fixes issue #7 TBD
-            tempNewNote = -1;
+            tempNewNote = -99;
         }
         get_state();//get the breath state from the pressure sensor if there's been a reading.
     }

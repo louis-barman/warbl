@@ -14,7 +14,7 @@ static int rateChangeIdx = 0;
 static int previousPressure = 0;
 static int previousAverage1 = 0;
 static int previousAverage2 = 0;
-
+static uint8_t previousNote = -1;
 
 /**
  * @brief calcHysteresis the amount of hysteresis when entering or leaving the top register
@@ -39,7 +39,8 @@ int calcHysteresis(int currentUpperBound, bool high)
 }
 
 
-void rateChangeReset() {
+void rateChangeReset()
+{
     rateChangeIdx = 0;
     previousPressure = 0;
     previousAverage1 = 0;
@@ -55,7 +56,8 @@ void rateChangeReset() {
  * @param pressure
  * @return the rate of pressure change or SHRT_MIN if the reading is not valid
  */
-int pressureRateChange(int pressure) {
+int pressureRateChange(int pressure)
+{
     int rateChange = SHRT_MIN;
     if (rateChangeIdx == 0) {
         rateChangeIdx = 1;
@@ -85,11 +87,13 @@ int pressureRateChange(int pressure) {
  * @param upperBound
  * @return the current state to be used
  */
-byte delayStateChange(jumpDrop_t jumpDrop, int pressure, int upperBound) {
+uint8_t delayStateChange(jumpDrop_t jumpDrop, int pressure, int upperBound)
+{
     if (!holdoffActive) {
         holdoffActive = true;
         holdoffCounter = getRegisterHoldoffTime(jumpDrop);
         rateChangeReset();
+        debugTrace(3, upperBound); //ZZ LB Debug
     }
     if (holdoffCounter > 0) {
         holdoffCounter--;
@@ -120,11 +124,12 @@ byte delayStateChange(jumpDrop_t jumpDrop, int pressure, int upperBound) {
  * @param upperBound -1 if the upperBound is disabled otherwise the adjusted upperBound with the muliplier
  * @return the new overblowing state to be used
  */
-byte registerControl(int pressure, int upperBound) {
-    debugPressure(pressure);
+uint8_t registerControl(int pressure, int upperBound)
+{
+    // debugPressure(pressure);
 
 
-    byte newState = currentState;
+    uint8_t newState = currentState;
     if (pressure <= lowerThreshold()) {
         newState = SILENCE;
         holdoffActive = false;
@@ -140,18 +145,21 @@ byte registerControl(int pressure, int upperBound) {
             int upperBoundLow = calcHysteresis(upperBound, false);
             if (pressure > upperBoundHigh) {
                 newState = TOP_REGISTER;
-                // debugTrace(1, upperBoundHigh); //ZZ LB Debug
+                debugTrace(1, upperBoundHigh); //ZZ LB Debug
                 holdoffActive = false;
             } else if (pressure <= upperBoundLow) {
                 newState = BOTTOM_REGISTER;
-                // debugTrace(2, upperBoundLow); //ZZ LB Debug
+                debugTrace(2, upperBoundLow); //ZZ LB Debug
             }
 
-
-            if (currentState == SILENCE && newState == BOTTOM_REGISTER) {
-                newState = delayStateChange(JUMP, pressure, upperBoundHigh);
-            } else if (currentState == TOP_REGISTER && newState == BOTTOM_REGISTER) {
-                newState = delayStateChange(DROP, pressure, upperBoundLow);
+            if (previousNote == newNote) {
+                if (currentState == SILENCE && newState == BOTTOM_REGISTER) {
+                    newState = delayStateChange(JUMP, pressure, upperBoundHigh);
+                } else if (currentState == TOP_REGISTER && newState == BOTTOM_REGISTER) {
+                    newState = delayStateChange(DROP, pressure, upperBoundLow);
+                }
+            } else { // ZZ
+                debugTrace(4, upperBound); //ZZ LB Debug
             }
 
             // Set DEBUG_ENABLED to enable or disable these messages
@@ -162,8 +170,8 @@ byte registerControl(int pressure, int upperBound) {
             debugSetOnce(false);
 
         }
-
     }
+    previousNote = newNote;
     currentState = newState;
     return newState;
 }
@@ -176,7 +184,8 @@ void resetRegisterCtrl(){
 #endif
 
 #if DEBUG_ENABLED
-void debugPressure(int pressure) {
+void debugPressure(int pressure)
+{
     static int previousPressure = 0;
 
     if (pressure > lowerThreshold()) {

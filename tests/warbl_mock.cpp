@@ -7,7 +7,7 @@ namespace WarblMock {
 
 static int lowerThresholdValue;
 static int upperThresholdValue;
-static byte hysteresisConfigValue;
+static uint8_t hysteresisConfigValue;
 static bool overblowEnabled;
 
 void resetWarblMock(){
@@ -17,11 +17,11 @@ void resetWarblMock(){
     hysteresisConfigValue = 0;
 }
 
-void setLowerThreshold(byte value) {
+void setLowerThreshold(uint8_t value) {
     lowerThresholdValue = value;
 }
 
-void setUpperThreshold(byte value) { // ZZ delete me
+void setUpperThreshold(uint8_t value) { // ZZ delete me
     upperThresholdValue = value;
 }
 
@@ -29,13 +29,13 @@ void enableOverblow(bool enable) {
     overblowEnabled = enable;
 }
 
-void setHysteresisConfig(byte value) {
+void setHysteresisConfig(uint8_t value) {
     hysteresisConfigValue = value;
 }
 
 } // namespace end
 
-byte hysteresisConfig() {
+uint8_t hysteresisConfig() {
     return WarblMock::hysteresisConfigValue;
 }
 
@@ -56,5 +56,4 @@ int getRegisterHoldoffTime(jumpDrop_t jumpDrop) {
     return 1;
 }
 
-
-
+uint8_t newNote = -1; // ZZ
